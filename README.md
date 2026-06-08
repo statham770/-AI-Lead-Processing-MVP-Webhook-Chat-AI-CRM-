@@ -99,19 +99,8 @@ Before importing the workflow, make sure you have the following components deplo
 #### Step 5. Activation
 Click the **Save** button in the top right corner and flip the workflow toggle to **Active**.
 
----
 
-## 📂 4. Repository Structure
-
-```
-├── Lead Processing MVP (Webhook + Chat -> AI -> CRM).json  # Workflow configuration file for import
-├── README.md                                               # This document (instructions and logic overview)
-└── demo.mp4                                                # System demonstration video
-```
-
----
-
-## 🛠️ 5. Troubleshooting
+## 🛠️ 4. Troubleshooting
 
 **Problem:** A message arrives in Telegram with the value `Inquiry: undefined`.
 > *Solution:* Ensure you have updated the code in the `Parse LLM Response` node to the version that restores the original text via the `originalMessage` variable. The node must return the `inquiryMessage` key.
