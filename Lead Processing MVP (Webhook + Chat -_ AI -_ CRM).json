@@ -1,0 +1,368 @@
+{
+  "name": "Lead Processing MVP (Webhook + Chat -> AI -> CRM)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "613acaf6-3bb0-490d-8bf9-baa7e562fb2b",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "aecaa0bf-6f32-46de-b37b-d6f7484db04b"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "0d070458-cf5b-47bf-accf-6bb84573ef02",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ],
+      "webhookId": "f3d2dc06-4211-43d9-9034-30c7398b7f89"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Нормалізація вхідних даних\nlet input = $input.all()[0].json;\nlet payload = {};\n\nif (input.query) {\n  // Якщо прийшло з Chat Trigger\n  payload.message = input.query;\n} else {\n  // Якщо прийшло з Webhook\n  payload = input.body || input;\n  if (payload.contact) {\n    payload.contact.email = payload.contact.email ? payload.contact.email.trim().toLowerCase() : 'N/A';\n    payload.contact.name = payload.contact.name ? payload.contact.name.trim() : 'N/A';\n  }\n}\n\nreturn [{ json: { normalized_payload: JSON.stringify(payload) } }];"
+      },
+      "id": "d5e9ba67-4942-43f9-8ffd-82c9ba1cd6c7",
+      "name": "Data Normalization",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "prompt": "={{ $json.normalized_payload }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "AIMessagePromptTemplate",
+              "message": "Проаналізуй цю заявку від клієнта та поверни структуровані дані у форматі JSON.\n\nВхідні дані заявки:\n{{ $json.normalized_payload }}\n\nТи повинен повернути ТІЛЬКИ чистий JSON-об'єкт із такими ключами (без жодних вступних слів, маркдауну чи пояснень):\n1. \"summary\" (короткий опис запиту українською мовою)\n2. \"lead_temperature\" (лише одне значення: Hot, Warm або Cold)\n3. \"type\" (лише одне значення: B2B або B2C)\n4. \"company\" (назва фірми чи компанії, якщо немає — \"Не вказано\")\n5. \"phone\" (номер телефону, якщо немає — \"Не вказано\")\n6. \"budget\" (сума бюджету з валютою, якщо вказано, якщо ні — \"Не вказано\")\n\nПриклад відповіді:\n{\n  \"summary\": \"Запит на автоматизацію моніторингу новин\",\n  \"lead_temperature\": \"Warm\",\n  \"type\": \"B2B\",\n  \"company\": \"Мамонт\",\n  \"phone\": \"321654987\",\n  \"budget\": \"3000 доларів\"\n}"
+            }
+          ]
+        }
+      },
+      "id": "c88f181c-9823-4055-9ee9-7f0e0fb5b6ea",
+      "name": "AI Processing",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "fe242421-0986-42f5-b141-b288d9029e83",
+      "name": "Ollama Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        400,
+        336
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "BWTYL66O3NlrFB5o",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1u_RldxM-tba9w_1CjntIaotc9iSqGePfL6luGg2tdPs",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Data1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "leadSummary",
+              "displayName": "leadSummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "leadTemperature",
+              "displayName": "leadTemperature",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "leadCategory",
+              "displayName": "leadCategory",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "processedTimestamp",
+              "displayName": "processedTimestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "processingStatus",
+              "displayName": "processingStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b105e30f-918a-43fd-8edc-acc5d4bbd1e0",
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        944,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "I4Qo8tWh9pMRWse7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-1003749520393",
+        "text": "={{ $json.htmlMessage }}\n\n",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "f4c88c7f-08f3-46ca-b0de-c9a3bc864b78",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        112
+      ],
+      "webhookId": "dac940d9-46bf-4753-a144-10541ca4d61d",
+      "credentials": {
+        "telegramApi": {
+          "id": "GnRBUTlHr5EEcL1b",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Отримуємо сирий текст від AI\nconst responseText = items[0].json.text || \"\";\n\n// 1. Відновлюємо оригінальний текст запиту та визначаємо джерело\nlet originalMessage = 'Не вказано';\nlet leadSource = 'Вбудований чат';\n\ntry {\n  const rawPayload = $('Data Normalization').first().json.normalized_payload;\n  const parsedPayload = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;\n  \n  originalMessage = parsedPayload.chatInput || parsedPayload.message || 'Не вказано';\n  \n  // Визначаємо звідки прийшов лід\n  if (parsedPayload.chatInput) {\n    leadSource = 'Вбудований чат';\n  } else if (parsedPayload.action || parsedPayload.message) {\n    leadSource = 'Webhook / Telegram';\n  }\n} catch (e) {\n  console.log('Помилка відновлення вхідних даних:', e);\n}\n\n// 2. Надійно витягуємо JSON із відповіді AI (шукаємо текст між першою { та останньою })\nlet parsedAI = {};\ntry {\n  const jsonMatch = responseText.match(/\\{[\\s\\S]*\\}/);\n  parsedAI = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);\n} catch (e) {\n  console.log('Не вдалося розпарсити відповідь моделі, використовуємо дефолтні значення:', e);\n}\n\n// 3. Валідація значень із фіксованих списків\nconst validTemps = ['Hot', 'Warm', 'Cold'];\nconst validCats = ['B2B', 'B2C'];\n\n// 4. Формуємо об'єкт з полями для Google Sheets та Telegram\nreturn [{\n  json: {\n    // Точні назви змінних, які очікує ваша нода \"Format Telegram Message\"\n    leadName: parsedAI.name || 'Не вказано',\n    leadEmail: parsedAI.email || 'Не вказано',\n    companyName: parsedAI.company || 'Не вказано',\n    phoneNumber: parsedAI.phone || 'Не вказано',\n    leadSource: leadSource,\n    leadSummary: parsedAI.summary || 'Запит на автоматизацію',\n    leadTemperature: validTemps.includes(parsedAI.lead_temperature) ? parsedAI.lead_temperature : 'Warm',\n    leadCategory: validCats.includes(parsedAI.type) ? parsedAI.type : 'B2B',\n    budget: parsedAI.budget || 'Не вказано',\n    inquiryMessage: originalMessage,\n    \n    // Поля для вашої Google-таблиці\n    text: responseText, \n    processedTime: new Date().toISOString(), // Для колонки \"processedTime\"\n    processedTimestamp: new Date().toISOString() // Для сумісності з Telegram-шаблоном\n  }\n}];"
+      },
+      "id": "1ca1d1ab-3c95-4f74-96d8-c3113115f158",
+      "name": "Parse LLM Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        768,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format HTML message for Telegram\nconst data = items[0].json;\n\nconst tempEmoji = {\n  'Hot': '🔥',\n  'Warm': '🌤️',\n  'Cold': '❄️'\n};\n\nconst catIcon = data.leadCategory === 'B2B' ? '🏢' : '👤';\nconst tempIcon = tempEmoji[data.leadTemperature] || '❓';\n\nconst htmlMessage = `\n<b>🎯 New Lead Processed</b>\n\n<b>Lead Details:</b>\n<b>Name:</b> ${data.leadName || 'Не вказано'}\n<b>Email:</b> ${data.leadEmail || 'Не вказано'}\n<b>Company:</b> ${data.companyName || 'Не вказано'}\n<b>Phone:</b> ${data.phoneNumber || 'Не вказано'}\n<b>Source:</b> ${data.leadSource || 'Вбудований чат'}\n\n<b>Analysis:</b>\n<b>Summary:</b> <em>${data.leadSummary}</em>\n<b>Temperature:</b> ${tempIcon} ${data.leadTemperature}\n<b>Category:</b> ${catIcon} ${data.leadCategory}\n<b>Budget:</b> ${data.budget || 'Not specified'}\n\n<b>Inquiry:</b>\n<em>${data.inquiryMessage}</em>\n\n<b>Processed:</b> ${new Date(data.processedTimestamp).toLocaleString()}\n`;\n\nreturn [{\n  json: {\n    ...data,\n    htmlMessage: htmlMessage,\n    chatId: '{{ $secrets.TELEGRAM_CHAT_ID }}'\n  }\n}];"
+      },
+      "id": "40b55a4e-1f78-4b8f-a577-3862cd588831",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1104,
+        112
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    text: \"Дякуємо! Ваша заявка прийнята. Найближчим часом з вами зв'яжеться менеджер.\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        112
+      ],
+      "id": "8cc50c85-1ca9-443a-a39a-f631351794b4",
+      "name": "Chat Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Data Normalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Normalization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Normalization": {
+      "main": [
+        [
+          {
+            "node": "AI Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Processing": {
+      "main": [
+        [
+          {
+            "node": "Parse LLM Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Processing",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LLM Response": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a314aca6-030d-40c7-9e54-c6ffece67b02",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "kzDcQqXs2aH4xjfe",
+  "tags": []
+}
